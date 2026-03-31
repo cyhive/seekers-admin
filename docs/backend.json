@@ -1,0 +1,288 @@
+
+{
+  "entities": {
+    "Member": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Member",
+      "type": "object",
+      "description": "Represents a Member in the e-commerce store.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Member."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the Member."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the Member."
+        },
+        "price": {
+          "type": "number",
+          "description": "Price of the Member."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of the Member image.",
+          "format": "uri"
+        },
+        "inventory": {
+          "type": "number",
+          "description": "Current stock level of the Member."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of the Member."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "price",
+        "imageUrl",
+        "inventory",
+        "category"
+      ]
+    },
+    "Order": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Order",
+      "type": "object",
+      "description": "Represents a customer order.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the order."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to Customer. (Relationship: Customer 1:N Order)"
+        },
+        "orderDate": {
+          "type": "string",
+          "description": "Date the order was placed.",
+          "format": "date-time"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Total amount of the order."
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status of the order (e.g., pending, processing, shipped, delivered)."
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "orderDate",
+        "totalAmount",
+        "status"
+      ]
+    },
+    "OrderItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OrderItem",
+      "type": "object",
+      "description": "Represents an item within an order.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the order item."
+        },
+        "orderId": {
+          "type": "string",
+          "description": "Reference to Order. (Relationship: Order 1:N OrderItem)"
+        },
+        "MemberId": {
+          "type": "string",
+          "description": "Reference to Member. (Relationship: Member 1:N OrderItem)"
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Quantity of the Member in the order item."
+        },
+        "itemPrice": {
+          "type": "number",
+          "description": "Price of the individual item."
+        }
+      },
+      "required": [
+        "id",
+        "orderId",
+        "MemberId",
+        "quantity",
+        "itemPrice"
+      ]
+    },
+    "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
+      "type": "object",
+      "description": "Represents a customer profile.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the customer."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the customer."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the customer."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the customer.",
+          "format": "email"
+        },
+        "address": {
+          "type": "string",
+          "description": "Address of the customer."
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number of the customer."
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email",
+        "address",
+        "phone"
+      ]
+    },
+    "Promotion": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Promotion",
+      "type": "object",
+      "description": "Represents a promotional campaign or discount.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the promotion."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the promotion."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the promotion."
+        },
+        "discountCode": {
+          "type": "string",
+          "description": "Discount code for the promotion."
+        },
+        "discountPercentage": {
+          "type": "number",
+          "description": "Discount percentage for the promotion."
+        },
+        "startDate": {
+          "type": "string",
+          "description": "Start date of the promotion.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "End date of the promotion.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "discountCode",
+        "discountPercentage",
+        "startDate",
+        "endDate"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/customers/{customerId}",
+        "definition": {
+          "entityName": "Customer",
+          "schema": {
+            "$ref": "#/backend/entities/Customer"
+          },
+          "description": "Stores customer profiles. Uses path-based ownership: only the customer (or an admin) can access their own profile.",
+          "params": [
+            {
+              "name": "customerId",
+              "description": "Unique identifier for the customer."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/customers/{customerId}/orders/{orderId}",
+        "definition": {
+          "entityName": "Order",
+          "schema": {
+            "$ref": "#/backend/entities/Order"
+          },
+          "description": "Stores orders associated with a specific customer.  Accessible only by the customer or an admin.",
+          "params": [
+            {
+              "name": "customerId",
+              "description": "Unique identifier for the customer."
+            },
+            {
+              "name": "orderId",
+              "description": "Unique identifier for the order."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/members/{MemberId}",
+        "definition": {
+          "entityName": "Member",
+          "schema": {
+            "$ref": "#/backend/entities/Member"
+          },
+          "description": "Stores Member information.",
+          "params": [
+            {
+              "name": "MemberId",
+              "description": "Unique identifier for the Member."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/promotions/{promotionId}",
+        "definition": {
+          "entityName": "Promotion",
+          "schema": {
+            "$ref": "#/backend/entities/Promotion"
+          },
+          "description": "Stores promotion details.",
+          "params": [
+            {
+              "name": "promotionId",
+              "description": "Unique identifier for the promotion."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to manage an e-commerce admin panel focusing on Members, orders, customers, and promotions. It prioritizes Authorization Independence using path-based ownership for user-specific data and structural segregation for different data types. Since this is an admin panel, we won't have the user generated content. Instead, we will have admin controlled content.\n\n- **Customers:** Customer accounts are managed under `/customers/{customerId}`. This adheres to the Path-Based Ownership access model, simplifying security rules and ensuring each customer's data is isolated and secure. Orders are stored as a subcollection of customers at `/customers/{customerId}/orders/{orderId}`. This establishes a clear parent-child relationship, making it easy to query orders for a specific customer.\n- **Members & Promotions:** Members and promotions are stored in root-level collections `/Members` and `/promotions`. This structural segregation allows for different security rules compared to customer-specific data. Since no authorization context is required to access these top level collections, this simplifies the security rule structure.\n\nThis structure supports required QAPs by:\n\n1.  **Secure List Operations:** Structural segregation ensures that listing operations on `/Members` or `/promotions` do not expose customer-specific data, maintaining privacy and security.\n2.  **Authorization Independence:** Path-based ownership for customer data eliminates the need for `get()` calls in security rules, enabling atomic operations and easier debugging.\n3.  **Data Integrity:** The structure facilitates enforcing invariants such as ownership and timestamps, ensuring data consistency and reliability."
+  }
+}

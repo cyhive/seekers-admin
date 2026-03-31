@@ -1,0 +1,46 @@
+{
+  "placeholderImages": [
+    {
+      "id": "user-avatar-1",
+      "description": "User Avatar 1",
+      "imageUrl": "https://picsum.photos/seed/1/40/40",
+      "imageHint": "person face"
+    },
+    {
+      "id": "user-avatar-2",
+      "description": "User Avatar 2",
+      "imageUrl": "https://picsum.photos/seed/2/40/40",
+      "imageHint": "person face"
+    },
+    {
+      "id": "Member-image-1",
+      "description": "Member Image 1",
+      "imageUrl": "https://picsum.photos/seed/101/600/400",
+      "imageHint": "Member"
+    },
+    {
+      "id": "Member-image-2",
+      "description": "Member Image 2",
+      "imageUrl": "https://picsum.photos/seed/102/600/400",
+      "imageHint": "Member detail"
+    },
+    {
+      "id": "Member-image-3",
+      "description": "Member Image 3",
+      "imageUrl": "https://picsum.photos/seed/103/600/400",
+      "imageHint": "Member lifestyle"
+    },
+    {
+      "id": "Member-image-4",
+      "description": "Member Image 4",
+      "imageUrl": "https://picsum.photos/seed/104/600/400",
+      "imageHint": "Member packaging"
+    },
+    {
+      "id": "Member-image-5",
+      "description": "Member Image 5",
+      "imageUrl": "https://picsum.photos/seed/105/600/400",
+      "imageHint": "Member context"
+    }
+  ]
+}
