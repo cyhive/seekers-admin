@@ -59,12 +59,12 @@ export function OrderTable<TData, TValue>({
     <div className="space-y-4">
       <div className="flex items-center">
         <Input
-          placeholder="Filter orders by customer..."
+          placeholder="Filter jobs by title..."
           value={
-            (table.getColumn("customer")?.getFilterValue() as string) ?? ""
+            (table.getColumn("title")?.getFilterValue() as string) ?? ""
           }
           onChange={(event) =>
-            table.getColumn("customer")?.setFilterValue(event.target.value)
+            table.getColumn("title")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
         />

@@ -11,20 +11,29 @@ const connectDB = async () => {
 const userSchema = new mongoose.Schema({}, { strict: false, collection: "users" });
 const User = mongoose.models.User || mongoose.model("User", userSchema);
 
-// 👇 HELPER: Guaranteed to output http://localhost:5000/uploads/...
+const backendApiUrl =
+  process.env.BACKEND_API_URL ||
+  process.env.NEXT_PUBLIC_BACKEND_API_URL ||
+  "http://15.206.73.249/api";
+
+const backendOrigin = backendApiUrl.replace(/\/api\/?$/, "");
+
 const formatImageUrl = (imagePath: string | null | undefined) => {
   if (!imagePath) return null;
-  
-  // 1. Strip out any old http:// domains or IP addresses
-  let cleanPath = imagePath.replace(/^https?:\/\/[^/]+\//, '');
-  
-  // 2. Strip out 'uploads/' and leading slashes just in case they are already there 
-  // (This prevents accidental "uploads/uploads/image.jpg" duplication)
-  cleanPath = cleanPath.replace(/^uploads\//, '');
-  cleanPath = cleanPath.replace(/^\//, ''); 
-  
-  // 3. Force the exact URL structure you requested
-  return `http://localhost:5000/uploads/${cleanPath}`;
+
+  // Already absolute URL
+  if (/^https?:\/\//i.test(imagePath)) {
+    return imagePath;
+  }
+
+  const cleanPath = imagePath.replace(/^\/+/, "");
+
+  // Support values like "uploads/file.jpg" from DB
+  if (cleanPath.startsWith("uploads/")) {
+    return `${backendOrigin}/${cleanPath}`;
+  }
+
+  return `${backendOrigin}/uploads/${cleanPath}`;
 };
 
 export async function GET(
@@ -45,7 +54,11 @@ export async function GET(
     return NextResponse.json({
       success: true,
       data: {
-        idPhoto: formatImageUrl(user.idPhoto || user.id_photo),
+        idType: user.idType || user.id_type || null,
+        idPhotoFront: formatImageUrl(
+          user.idPhotoFront || user.id_photo_front || user.idPhoto || user.id_photo
+        ),
+        idPhotoBack: formatImageUrl(user.idPhotoBack || user.id_photo_back),
         profilePhoto: formatImageUrl(user.profilePhoto || user.profile_photo),
         
         portfolio: Array.isArray(user.portfolio) 

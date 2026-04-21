@@ -13,9 +13,53 @@ export type UserCustomer = {
 };
 
 type ImageData = {
-  idPhoto: string | null;
+  idType?: string | null;
+  idPhotoFront: string | null;
+  idPhotoBack?: string | null;
   profilePhoto: string | null;
   portfolio: string | string[] | null; 
+};
+
+const getAlternateImageUrl = (url: string) => {
+  if (url.includes("/api/uploads/")) {
+    return url.replace("/api/uploads/", "/uploads/");
+  }
+  if (url.includes("/uploads/")) {
+    return url.replace("/uploads/", "/api/uploads/");
+  }
+  return url;
+};
+
+const FallbackImage = ({
+  src,
+  alt,
+  className,
+}: {
+  src: string;
+  alt: string;
+  className: string;
+}) => {
+  const [currentSrc, setCurrentSrc] = useState(src);
+  const [hasRetried, setHasRetried] = useState(false);
+
+  useEffect(() => {
+    setCurrentSrc(src);
+    setHasRetried(false);
+  }, [src]);
+
+  return (
+    <img
+      src={currentSrc}
+      alt={alt}
+      className={className}
+      onError={() => {
+        if (!hasRetried) {
+          setCurrentSrc(getAlternateImageUrl(currentSrc));
+          setHasRetried(true);
+        }
+      }}
+    />
+  );
 };
 
 const ImageModal = ({
@@ -101,11 +145,16 @@ const ImageModal = ({
 
         {images && !loading && (
           <div className="flex-1 overflow-y-auto pr-2">
-            
+
+            <div className="mb-4 rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-700 border">
+              ID Type: <span className="font-semibold capitalize">{images.idType || "Not provided"}</span>
+            </div>
+
             {/* --- ID & PROFILE PHOTOS (Top Row) --- */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               {[
-                { label: "ID Photo", src: images.idPhoto },
+                { label: "ID Photo Front", src: images.idPhotoFront },
+                { label: "ID Photo Back", src: images.idPhotoBack },
                 { label: "Profile Photo", src: images.profilePhoto },
               ].map(({ label, src }) => (
                 <div key={label}>
@@ -114,7 +163,7 @@ const ImageModal = ({
                   </p>
                   {src ? (
                     <a href={src} target="_blank" rel="noopener noreferrer">
-                      <img
+                      <FallbackImage
                         src={src}
                         alt={label}
                         className="h-40 w-full rounded-lg border object-cover transition hover:opacity-90 shadow-sm"
@@ -138,9 +187,9 @@ const ImageModal = ({
               {portfolioArray.length > 0 ? (
                 <div className="relative w-full h-64 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden flex items-center justify-center group">
                   <a href={portfolioArray[currentPortIndex]} target="_blank" rel="noopener noreferrer" className="w-full h-full block">
-                    <img 
-                      src={portfolioArray[currentPortIndex]} 
-                      alt={`Portfolio ${currentPortIndex + 1}`} 
+                    <FallbackImage
+                      src={portfolioArray[currentPortIndex]}
+                      alt={`Portfolio ${currentPortIndex + 1}`}
                       className="w-full h-full object-contain transition hover:opacity-90"
                     />
                   </a>
