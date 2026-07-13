@@ -16,24 +16,65 @@ const backendApiUrl =
   process.env.NEXT_PUBLIC_BACKEND_API_URL ||
   "http://15.206.73.249/api";
 
-const backendOrigin = backendApiUrl.replace(/\/api\/?$/, "");
+const backendOrigin = new URL(backendApiUrl).origin;
+
+const getOrigin = (value: string) => {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+};
+
+const proxiedOrigins = new Set(
+  [
+    backendOrigin,
+    ...(process.env.CUSTOMER_IMAGE_ALLOWED_ORIGINS || "")
+      .split(",")
+      .map((origin) => getOrigin(origin.trim())),
+  ].filter(Boolean) as string[]
+);
+
+const proxiedImageUrl = (imageUrl: string) => {
+  try {
+    const url = new URL(imageUrl);
+    if (proxiedOrigins.has(url.origin)) {
+      return `/api/customers/image-proxy?url=${encodeURIComponent(
+        url.toString()
+      )}`;
+    }
+  } catch {}
+
+  return imageUrl;
+};
 
 const formatImageUrl = (imagePath: string | null | undefined) => {
   if (!imagePath) return null;
 
+  if (/^data:image\//i.test(imagePath)) {
+    return imagePath;
+  }
+
   // Already absolute URL
   if (/^https?:\/\//i.test(imagePath)) {
-    return imagePath;
+    return proxiedImageUrl(imagePath);
   }
 
   const cleanPath = imagePath.replace(/^\/+/, "");
 
   // Support values like "uploads/file.jpg" from DB
   if (cleanPath.startsWith("uploads/")) {
-    return `${backendOrigin}/${cleanPath}`;
+    return proxiedImageUrl(`${backendOrigin}/${cleanPath}`);
   }
 
-  return `${backendOrigin}/uploads/${cleanPath}`;
+  // Support values like "api/uploads/file.jpg" from DB
+  if (cleanPath.startsWith("api/uploads/")) {
+    return proxiedImageUrl(
+      `${backendOrigin}/${cleanPath.replace(/^api\//, "")}`
+    );
+  }
+
+  return proxiedImageUrl(`${backendOrigin}/uploads/${cleanPath}`);
 };
 
 export async function GET(
