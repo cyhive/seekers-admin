@@ -59,6 +59,15 @@ export default function JobsPage() {
     }
   };
 
+  const handleDeleteJob = (jobId: string) => {
+    setJobs((currentJobs) =>
+      currentJobs.filter((job) => (job.id || job._id) !== jobId)
+    );
+    setFilteredJobs((currentJobs) =>
+      currentJobs.filter((job) => (job.id || job._id) !== jobId)
+    );
+  };
+
   useEffect(() => {
     fetchJobs();
   }, []);
@@ -134,7 +143,11 @@ export default function JobsPage() {
           Loading jobs from database...
         </div>
       ) : (
-        <OrderTable columns={columns} data={sortedJobs} />
+        <OrderTable
+          columns={columns}
+          data={sortedJobs}
+          onRowDelete={handleDeleteJob}
+        />
       )}
     </div>
   );

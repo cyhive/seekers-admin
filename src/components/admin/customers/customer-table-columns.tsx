@@ -1,6 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
+import { ArrowUpDown } from "lucide-react";
 import { useState, useEffect } from "react";
 
 export type UserCustomer = {
@@ -10,6 +11,11 @@ export type UserCustomer = {
   category: string;
   status?: string;
   createdAt?: string | null;
+};
+
+type DateRangeFilter = {
+  from?: string;
+  to?: string;
 };
 
 type ImageData = {
@@ -29,6 +35,45 @@ const getAlternateImageUrl = (url: string) => {
   }
   return url;
 };
+
+const formatDate = (value: unknown) => {
+  if (!value) return "-";
+
+  const date = new Date(value as string);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
+const dateRangeFilter = (
+  value: unknown,
+  filterValue: DateRangeFilter | undefined
+) => {
+  if (!filterValue?.from && !filterValue?.to) return true;
+  if (!value) return false;
+
+  const date = new Date(value as string);
+  if (Number.isNaN(date.getTime())) return false;
+
+  const time = date.getTime();
+  const fromTime = filterValue.from
+    ? new Date(`${filterValue.from}T00:00:00`).getTime()
+    : Number.NEGATIVE_INFINITY;
+  const toTime = filterValue.to
+    ? new Date(`${filterValue.to}T23:59:59.999`).getTime()
+    : Number.POSITIVE_INFINITY;
+
+  return time >= fromTime && time <= toTime;
+};
+
+const getStatusLabel = (status: string) =>
+  status === "Approved" ? "Accepted" : status;
 
 const FallbackImage = ({
   src,
@@ -238,9 +283,18 @@ const ImageModal = ({
   );
 };
 
-const ActionCell = ({ customer }: { customer: UserCustomer }) => {
+const ActionCell = ({
+  customer,
+  onStatusUpdate,
+  onDelete,
+}: {
+  customer: UserCustomer;
+  onStatusUpdate?: (status: string) => void;
+  onDelete?: () => void;
+}) => {
   const [status, setStatus] = useState(customer.status || "Pending");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
   const handleUpdate = async (newStatus: string) => {
@@ -253,6 +307,7 @@ const ActionCell = ({ customer }: { customer: UserCustomer }) => {
       });
       if (!res.ok) throw new Error("Failed to update status");
       setStatus(newStatus);
+      onStatusUpdate?.(newStatus);
     } catch (error) {
       console.error("Error updating customer:", error);
       alert("Failed to update customer status.");
@@ -260,6 +315,39 @@ const ActionCell = ({ customer }: { customer: UserCustomer }) => {
       setIsUpdating(false);
     }
   };
+
+  const handleDelete = async () => {
+    const shouldDelete = window.confirm(
+      `Delete "${customer.name || "this user"}"? This cannot be undone.`
+    );
+    if (!shouldDelete) return;
+
+    setIsDeleting(true);
+
+    try {
+      const res = await fetch(
+        `/api/customers?id=${encodeURIComponent(customer.id)}`,
+        { method: "DELETE" }
+      );
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || data?.success === false) {
+        throw new Error(data?.message || "Failed to delete user");
+      }
+
+      onDelete?.();
+    } catch (error) {
+      console.error("Error deleting customer:", error);
+      alert(error instanceof Error ? error.message : "Failed to delete user");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const normalizedStatus = status.toLowerCase();
+  const isApproved =
+    normalizedStatus === "approved" || normalizedStatus === "accepted";
+  const isRejected = normalizedStatus === "rejected";
 
   return (
     <>
@@ -271,28 +359,27 @@ const ActionCell = ({ customer }: { customer: UserCustomer }) => {
           View
         </button>
 
-        {status === "Accepted" || status === "Approved" ? (
-          <span className="text-sm font-bold text-green-600">Accepted</span>
-        ) : status === "Rejected" ? (
-          <span className="text-sm font-bold text-red-600">Rejected</span>
-        ) : (
-          <>
-            <button
-              onClick={() => handleUpdate("Approved")}
-              disabled={isUpdating}
-              className="rounded-md bg-green-600 px-3 py-1 text-sm font-medium text-white hover:bg-green-700 transition-colors disabled:opacity-50"
-            >
-              {isUpdating ? "..." : "Approve"}
-            </button>
-            <button
-              onClick={() => handleUpdate("Rejected")}
-              disabled={isUpdating}
-              className="rounded-md bg-red-600 px-3 py-1 text-sm font-medium text-white hover:bg-red-700 transition-colors disabled:opacity-50"
-            >
-              {isUpdating ? "..." : "Reject"}
-            </button>
-          </>
-        )}
+        <button
+          onClick={() => handleUpdate("Approved")}
+          disabled={isApproved || isUpdating || isDeleting}
+          className="rounded-md bg-green-600 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isApproved ? "Accepted" : "Approve"}
+        </button>
+        <button
+          onClick={() => handleUpdate("Rejected")}
+          disabled={isRejected || isUpdating || isDeleting}
+          className="rounded-md bg-red-600 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isRejected ? "Rejected" : "Reject"}
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={isDeleting || isUpdating}
+          className="rounded-md bg-red-700 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isDeleting ? "Deleting..." : "Delete"}
+        </button>
       </div>
 
       {showModal && (
@@ -307,8 +394,60 @@ export const columns: ColumnDef<UserCustomer>[] = [
   { accessorKey: "phoneNumber", header: "Phone Number" },
   { accessorKey: "category", header: "Category" },
   {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => {
+      const status = (row.getValue("status") as string | undefined) || "Pending";
+      const lowerStatus = status.toLowerCase();
+      let colorClass = "text-orange-500";
+
+      if (lowerStatus === "accepted" || lowerStatus === "approved") {
+        colorClass = "text-green-600";
+      }
+      if (lowerStatus === "rejected") colorClass = "text-red-600";
+
+      return (
+        <span className={`font-bold capitalize ${colorClass}`}>
+          {getStatusLabel(status)}
+        </span>
+      );
+    },
+  },
+  {
+    accessorKey: "createdAt",
+    header: ({ column }) => (
+      <button
+        className="flex items-center gap-2"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Created Date
+        <ArrowUpDown className="h-4 w-4" />
+      </button>
+    ),
+    cell: ({ row }) => formatDate(row.getValue("createdAt")),
+    filterFn: (row, columnId, filterValue) =>
+      dateRangeFilter(row.getValue(columnId), filterValue as DateRangeFilter),
+  },
+  {
     id: "actions",
     header: "Action",
-    cell: ({ row }) => <ActionCell customer={row.original} />,
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as
+        | {
+            deleteRow?: (rowId: string) => void;
+            updateRowStatus?: (rowId: string, status: string) => void;
+          }
+        | undefined;
+
+      return (
+        <ActionCell
+          customer={row.original}
+          onStatusUpdate={(status) =>
+            meta?.updateRowStatus?.(row.original.id, status)
+          }
+          onDelete={() => meta?.deleteRow?.(row.original.id)}
+        />
+      );
+    },
   },
 ];

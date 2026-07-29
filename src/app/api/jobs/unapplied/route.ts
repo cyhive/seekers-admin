@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
+import { enrichJobsWithPosterDetails } from "@/lib/job-enrichment";
 
 export const dynamic = "force-dynamic";
 
@@ -12,9 +13,11 @@ const connectDB = async () => {
 
 const jobSchema = new mongoose.Schema({}, { strict: false, collection: "jobs" });
 const jobApplicantSchema = new mongoose.Schema({}, { strict: false, collection: "jobapplicants" });
+const userSchema = new mongoose.Schema({}, { strict: false, collection: "users" });
 
 const Job = mongoose.models.Job || mongoose.model("Job", jobSchema);
 const JobApplicant = mongoose.models.JobApplicant || mongoose.model("JobApplicant", jobApplicantSchema);
+const User = mongoose.models.User || mongoose.model("User", userSchema);
 
 export async function GET() {
   try {
@@ -34,8 +37,9 @@ export async function GET() {
     })
       .sort({ createdAt: -1 })
       .lean();
+    const enrichedJobs = await enrichJobsWithPosterDetails(unappliedJobs, User);
 
-    return NextResponse.json({ success: true, data: unappliedJobs });
+    return NextResponse.json({ success: true, data: enrichedJobs });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, message: error.message },

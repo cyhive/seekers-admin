@@ -26,7 +26,10 @@ export default function CustomersPage() {
 
         const sortByNewest = (dataArray: UserCustomer[]) => {
           return [...dataArray].sort((a: any, b: any) => {
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+
+            return dateB - dateA;
           });
         };
 
@@ -52,6 +55,12 @@ export default function CustomersPage() {
     fetchCustomers();
   }, []);
 
+  const handleDeleteCustomer = (customerId: string) => {
+    setData((currentData) =>
+      currentData.filter((customer) => customer.id !== customerId)
+    );
+  };
+
   return (
     <>
       <div className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background overflow-auto">
@@ -75,7 +84,11 @@ export default function CustomersPage() {
             Loading customers...
           </div>
         ) : (
-          <CustomerTable columns={columns} data={data} />
+          <CustomerTable
+            columns={columns}
+            data={data}
+            onRowDelete={handleDeleteCustomer}
+          />
         )}
       </div>
     </>
