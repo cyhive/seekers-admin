@@ -47,6 +47,57 @@ const getJobAddress = (job: LooseDocument) =>
 const getJobDetails = (job: LooseDocument) =>
   pickString(job.jobDetails, job.details, job.description, job.jobDescription);
 
+const toNumberOrNull = (value: unknown) => {
+  if (value === null || value === undefined || value === "") return null;
+  const amount = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(amount) ? amount : null;
+};
+
+const getPaymentFields = (job: LooseDocument) => {
+  const estimatedAmount = toNumberOrNull(
+    job.estimatedAmount ?? job.estimateAmount
+  );
+  const platformFeePercent = toNumberOrNull(
+    job.platformFeePercent ?? job.platformFee
+  );
+  const platformFeeAmount = toNumberOrNull(job.platformFeeAmount);
+  const workerPayoutAmount = toNumberOrNull(
+    job.workerPayoutAmount ??
+      (estimatedAmount !== null && platformFeePercent !== null
+        ? estimatedAmount - (estimatedAmount * platformFeePercent) / 100
+        : estimatedAmount !== null && platformFeeAmount !== null
+          ? estimatedAmount - platformFeeAmount
+          : null)
+  );
+
+  return {
+    estimatedAmount,
+    platformFeePercent,
+    platformFee:
+      platformFeePercent ??
+      toNumberOrNull(job.platformFee) ??
+      platformFeeAmount,
+    platformFeeAmount,
+    workerPayoutAmount,
+    paymentStatus: pickString(job.paymentStatus) || null,
+    paymentLink: pickString(
+      job.paymentLink,
+      job.paymentUrl,
+      job.razorpayPaymentLink,
+      job.shortUrl
+    ) || null,
+  };
+};
+
+const enrichJobBase = (job: LooseDocument) => ({
+  ...job,
+  id: job.id || job._id?.toString?.(),
+  postedByName: getJobPosterFallback(job),
+  jobDetails: getJobDetails(job),
+  jobAddress: getJobAddress(job),
+  ...getPaymentFields(job),
+});
+
 export async function enrichJobsWithPosterDetails<T extends LooseDocument>(
   jobs: T[],
   User: any
@@ -58,13 +109,7 @@ export async function enrichJobsWithPosterDetails<T extends LooseDocument>(
   );
 
   if (phoneKeys.size === 0) {
-    return jobs.map((job) => ({
-      ...job,
-      id: job.id || job._id?.toString?.(),
-      postedByName: getJobPosterFallback(job),
-      jobDetails: getJobDetails(job),
-      jobAddress: getJobAddress(job),
-    }));
+    return jobs.map((job) => enrichJobBase(job));
   }
 
   const users = await User.find(
@@ -105,11 +150,8 @@ export async function enrichJobsWithPosterDetails<T extends LooseDocument>(
     const postedByName = getUserDisplayName(matchedUser) || getJobPosterFallback(job);
 
     return {
-      ...job,
-      id: job.id || job._id?.toString?.(),
+      ...enrichJobBase(job),
       postedByName,
-      jobDetails: getJobDetails(job),
-      jobAddress: getJobAddress(job),
     };
   });
 }
