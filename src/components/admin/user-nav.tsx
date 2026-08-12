@@ -1,11 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { LogOut, User } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useState } from "react";
-import Link from "next/link";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 export function UserNav() {
@@ -17,8 +16,9 @@ export function UserNav() {
 
   const handleLogout = async () => {
     setIsDropdownOpen(false);
-    await signOut({ redirect: false });
-    router.push("/");
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
   };
 
   return (
@@ -47,17 +47,6 @@ export function UserNav() {
           aria-labelledby="user-menu-button"
           tabIndex={-1}
         >
-          <Link
-            href="/settings"
-            onClick={() => setIsDropdownOpen(false)}
-            className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted"
-            role="menuitem"
-            tabIndex={-1}
-            id="user-menu-item-0"
-          >
-            <User className="mr-2 h-4 w-4" />
-            <span>Account Settings</span>
-          </Link>
           <button
             onClick={handleLogout}
             className="flex items-center w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted"

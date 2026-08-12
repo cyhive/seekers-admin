@@ -1,29 +1,23 @@
 "use client";
 
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 
-const data = [
-  { name: 'Jan', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Feb', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Mar', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Apr', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'May', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Jun', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Jul', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Aug', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Sep', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Oct', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Nov', total: Math.floor(Math.random() * 5000) + 1000 },
-  { name: 'Dec', total: Math.floor(Math.random() * 5000) + 1000 },
-];
-
-export function SalesChart() {
+export function SalesChart({
+  data,
+}: {
+  data: Array<{ name: string; total: number }>;
+}) {
   return (
-    <div className="rounded-lg border bg-card text-card-foreground shadow-sm glassmorphism animate-slide-in-up" style={{ animationDelay: '500ms' }}>
+    <div
+      className="rounded-lg border bg-card text-card-foreground shadow-sm glassmorphism animate-slide-in-up"
+      style={{ animationDelay: "500ms" }}
+    >
       <div className="flex flex-col space-y-1.5 p-6">
-        <h3 className="text-2xl font-semibold leading-none tracking-tight font-headline">Overview</h3>
+        <h3 className="text-2xl font-semibold leading-none tracking-tight font-headline">
+          Jobs Overview
+        </h3>
         <p className="text-sm text-muted-foreground">
-          An overview of your monthly sales.
+          Jobs posted over the last 12 months.
         </p>
       </div>
       <div className="p-6 pt-0 pl-2">
@@ -42,11 +36,14 @@ export function SalesChart() {
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(value) => `$${value}`}
+                allowDecimals={false}
               />
               <Tooltip
-                cursor={{ fill: 'hsl(var(--muted))' }}
-                contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                cursor={{ fill: "hsl(var(--muted))" }}
+                contentStyle={{
+                  backgroundColor: "hsl(var(--background))",
+                  border: "1px solid hsl(var(--border))",
+                }}
               />
               <Bar
                 dataKey="total"

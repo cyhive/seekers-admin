@@ -4,29 +4,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  ShoppingCart,
-  Package,
+  Briefcase,
   Users,
-  TicketPercent,
-  Settings,
   Mountain,
   PanelLeft,
   ChevronUp,
   ChevronDown,
-  Image,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/jobs", icon: ShoppingCart, label: "Jobs" },
-  { href: "/members", icon: Package, label: "Members" },
-  { href: "/categories", icon: Package, label: "Categories" },
+  { href: "/jobs", icon: Briefcase, label: "Jobs" },
   { href: "/customers", icon: Users, label: "Customers" },
-  { href: "/promotions", icon: TicketPercent, label: "Promotions" },
-  { href: "/whatwehavedone", icon: Image, label: "What We Have Done" },
-  { href: "/news", icon: Image, label: "News" },
 ];
 
 function cn(...classes: (string | boolean | undefined)[]) {
@@ -133,25 +124,6 @@ export function SidebarNav() {
               </Link>
             ))}
           </nav>
-
-          {/* Settings */}
-          <div className="mt-auto p-4 border-t">
-            <Link
-              href="/settings"
-              onClick={() => setIsMobileOpen(false)}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                pathname.startsWith("/settings") &&
-                  "bg-primary/10 text-primary",
-                isCollapsed && "md:justify-center md:px-2 md:py-3"
-              )}
-            >
-              <Settings
-                className={cn("h-5 w-5", isCollapsed && "md:h-6 md:w-6")}
-              />
-              {!isCollapsed && <span>Settings</span>}
-            </Link>
-          </div>
         </div>
       </div>
     </>

@@ -1,129 +1,134 @@
-  // "use client";
+"use client";
 
-  // import { useState, useEffect } from "react";
-  // import { useRouter, useSearchParams } from "next/navigation";
-  // import { Mountain, Eye, EyeOff } from "lucide-react";
-  // import Link from "next/link";
-  // import { signIn } from "next-auth/react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Eye, EyeOff, Mountain } from "lucide-react";
 
-  // export default function LoginPage() {
-  //   const [email, setEmail] = useState("");
-  //   const [password, setPassword] = useState("");
-  //   const [showPassword, setShowPassword] = useState(false);
-  //   const router = useRouter();
-  //   const searchParams = useSearchParams();
+export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  //   // useEffect(() => {
-  //   //   const error = searchParams.get("error");
-  //   //   if (error === "CredentialsSignin") {
-  //   //     // Clean the URL
-  //   //     router.replace("/login", { scroll: false });
-  //   //   } else if (searchParams.get("callbackUrl")) {
-  //   //     // Clean the URL
-  //   //     router.replace("/login", { scroll: false });
-  //   //   }
-  //   // }, [searchParams, router]);
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
 
-  //   const handleLogin =() => {
-    
-  //       router.push("/dashboard");
-    
-  //   };
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-  //   return (
-  //     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8">
-  //       <div className="w-full max-w-md space-y-8">
-  //         <div className="text-center">
-  //           <div className="flex justify-center items-center gap-2 mb-4">
-  //             <Mountain className="h-8 w-8 text-primary" />
-  //             <h1 className="text-3xl font-bold tracking-tight text-foreground font-headline">
-  //               Pacha Bhoomi
-  //             </h1>
-  //           </div>
-  //           <h2 className="mt-6 text-center text-2xl font-bold tracking-tight text-foreground">
-  //             Sign in to your account
-  //           </h2>
-  //         </div>
-  //         <form className="mt-8 space-y-6" onSubmit={()=>handleLogin()}>
-  //           <div className="rounded-md shadow-sm -space-y-px">
-  //             <div>
-  //               <label htmlFor="email-address" className="sr-only">
-  //                 Email address
-  //               </label>
-  //               <input
-  //                 id="email-address"
-  //                 name="email"
-  //                 type="email"
-  //                 autoComplete="email"
-  //                 required
-  //                 className="relative block w-full appearance-none rounded-t-md border border-input bg-background px-3 py-2 text-foreground placeholder-muted-foreground focus:z-10 focus:border-primary focus:outline-none focus:ring-primary sm:text-sm"
-  //                 placeholder="Email address"
-  //                 value={email}
-  //                 onChange={(e) => setEmail(e.target.value)}
-  //               />
-  //             </div>
-  //             <div className="relative">
-  //               <label htmlFor="password" className="sr-only">
-  //                 Password
-  //               </label>
-  //               <input
-  //                 id="password"
-  //                 name="password"
-  //                 type={showPassword ? "text" : "password"}
-  //                 autoComplete="current-password"
-  //                 required
-  //                 className="relative block w-full appearance-none rounded-b-md border border-input bg-background px-3 py-2 text-foreground placeholder-muted-foreground focus:z-10 focus:border-primary focus:outline-none focus:ring-primary sm:text-sm pr-10"
-  //                 placeholder="Password"
-  //                 value={password}
-  //                 onChange={(e) => setPassword(e.target.value)}
-  //               />
-  //               <button
-  //                 type="button"
-  //                 className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground"
-  //                 onClick={() => setShowPassword(!showPassword)}
-  //               >
-  //                 {showPassword ? (
-  //                   <EyeOff className="h-5 w-5" />
-  //                 ) : (
-  //                   <Eye className="h-5 w-5" />
-  //                 )}
-  //                 <span className="sr-only">
-  //                   {showPassword ? "Hide password" : "Show password"}
-  //                 </span>
-  //               </button>
-  //             </div>
-  //           </div>
+      const data = await res.json();
 
-  //           <div className="flex items-center justify-between">
-  //             <div className="text-sm">
-  //               <Link
-  //                 href="#"
-  //                 className="font-medium text-primary hover:text-primary/90"
-  //               >
-  //                 Forgot your password?
-  //               </Link>
-  //             </div>
-  //           </div>
+      if (!res.ok || data?.success === false) {
+        setError(data?.message || "Invalid email or password");
+        return;
+      }
 
-  //           <div>
-  //             <button
-  //               type="submit"
-  //               className="group relative flex w-full justify-center rounded-md border border-transparent bg-primary py-2 px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-  //             >
-  //               Sign in
-  //             </button>
-  //           </div>
-  //         </form>
-  //         <p className="mt-2 text-center text-sm text-muted-foreground">
-  //           Don&apos;t have an account?{" "}
-  //           {/* <Link
-  //             href="#"
-  //             className="font-medium text-primary hover:text-primary/90"
-  //           >
-  //             Sign up
-  //           </Link> */}
-  //         </p>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-md space-y-8">
+        {/* Logo */}
+        <div className="text-center">
+          <div className="flex justify-center items-center gap-2 mb-4">
+            <Mountain className="h-9 w-9 text-primary" />
+            <span className="text-3xl font-bold tracking-tight font-headline">
+              Jodarsh
+            </span>
+          </div>
+          <h2 className="text-xl font-semibold text-muted-foreground">
+            Admin Panel
+          </h2>
+        </div>
+
+        {/* Card */}
+        <div className="rounded-xl border bg-card shadow-sm p-8 space-y-6">
+          <h3 className="text-lg font-semibold">Sign in to your account</h3>
+
+          {error && (
+            <div className="rounded-md bg-destructive/10 border border-destructive/30 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium mb-1"
+              >
+                Email address
+              </label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter email address"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium mb-1"
+              >
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              {loading ? "Signing in..." : "Sign in"}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
