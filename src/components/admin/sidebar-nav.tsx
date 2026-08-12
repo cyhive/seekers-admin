@@ -99,7 +99,7 @@ export function SidebarNav() {
                 className="flex items-center gap-2 font-headline text-lg"
               >
                 <Mountain className="h-6 w-6 text-primary" />
-                <span>Pacha Bhoomi</span>
+                <span>Jodarsh</span>
               </Link>
             )}
 

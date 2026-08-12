@@ -7,8 +7,8 @@ import { Toast } from "@/components/ui/toast";
 
 
 export const metadata: Metadata = {
-  title: "Pacha Bhoomi Admin",
-  description: "Admin panel for Pacha Bhoomi e-commerce website.",
+  title: "Jodarsh Admin",
+  description: "Admin panel for Jodarsh website.",
 };
 
 export default function RootLayout({

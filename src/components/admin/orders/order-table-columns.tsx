@@ -5,6 +5,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { WorkerProfileModal } from "./worker-profile-modal";
 
 // 1. Define the TypeScript shape of your MongoDB Job document
 export type Job = {
@@ -18,6 +19,10 @@ export type Job = {
   category?: string;
   postedByName?: string;
   userName?: string;
+  assignedWorkerName?: string;
+  assignedWorkerPhone?: string;
+  assignedWorkerStatus?: string;
+  applicantPhones?: string[];
   fullAddress?: string;
   locationText?: string;
   address?: string;
@@ -549,6 +554,52 @@ const ActionCell = ({
   );
 };
 
+const AssignedWorkerCell = ({ job }: { job: Job }) => {
+  const [open, setOpen] = useState(false);
+  const name = displayText(job.assignedWorkerName);
+  const phone = displayText(job.assignedWorkerPhone);
+  const status = displayText(job.assignedWorkerStatus);
+  const applicants = (job.applicantPhones || []).filter(Boolean);
+
+  if (name === "-" && phone === "-") {
+    if (applicants.length > 0) {
+      return (
+        <div className="text-sm space-y-1 max-w-[220px]">
+          <p className="text-muted-foreground">Applied, not hired yet</p>
+          <p className="whitespace-normal break-words">{applicants.join(", ")}</p>
+        </div>
+      );
+    }
+    return <span className="text-muted-foreground">Not assigned</span>;
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-left text-sm space-y-1 max-w-[220px] rounded-md p-1 -m-1 hover:bg-muted/60"
+        title="View worker details"
+      >
+        <p className="font-medium text-blue-600 hover:underline">
+          {name === "-" ? "Unknown worker" : name}
+        </p>
+        <p>{phone}</p>
+        {status !== "-" && (
+          <p className="text-xs font-semibold capitalize text-green-600">{status}</p>
+        )}
+      </button>
+      {open && job.assignedWorkerPhone && (
+        <WorkerProfileModal
+          phone={job.assignedWorkerPhone}
+          fallbackName={job.assignedWorkerName}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
+};
+
 // 3. Define the Table Columns
 export const columns: ColumnDef<Job>[] = [
   {
@@ -577,7 +628,16 @@ export const columns: ColumnDef<Job>[] = [
   },
   {
     accessorKey: "phoneNumber",
-    header: "Phone Number",
+    header: "Poster Phone",
+  },
+  {
+    id: "assignedWorker",
+    accessorFn: (row) =>
+      [row.assignedWorkerName, row.assignedWorkerPhone, row.assignedWorkerStatus]
+        .filter(Boolean)
+        .join(" "),
+    header: "Assigned Worker",
+    cell: ({ row }) => <AssignedWorkerCell job={row.original} />,
   },
   {
     id: "jobAddress",
