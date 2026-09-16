@@ -4,13 +4,15 @@ import { OrderTable } from "@/components/admin/orders/order-table";
 import { columns, Job } from "@/components/admin/orders/order-table-columns";
 import { useEffect, useMemo, useState } from "react";
 
+type JobFilter = "all" | "unapplied";
+
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterLoading, setFilterLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<"all" | "unapplied">("all");
+  const [activeFilter, setActiveFilter] = useState<JobFilter>("all");
 
   const fetchJobs = async () => {
     try {
@@ -37,7 +39,7 @@ export default function JobsPage() {
     }
   };
 
-  const handleFilter = async (filter: "all" | "unapplied") => {
+  const handleFilter = async (filter: JobFilter) => {
     setActiveFilter(filter);
     setError(null);
 
@@ -90,9 +92,7 @@ export default function JobsPage() {
           </p>
         </div>
 
-        {/* Buttons */}
-        <div className="flex items-center gap-2">
-          {/* Filter buttons */}
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => handleFilter("all")}
             className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
@@ -114,8 +114,6 @@ export default function JobsPage() {
           >
             {filterLoading ? "Loading..." : "Not Applied"}
           </button>
-
-          {/* Refresh */}
           <button
             onClick={fetchJobs}
             className="rounded-md px-4 py-2 bg-primary text-white hover:bg-primary/90 text-sm transition-colors"
@@ -125,10 +123,10 @@ export default function JobsPage() {
         </div>
       </div>
 
-      {/* Active filter info */}
       {activeFilter === "unapplied" && !filterLoading && (
         <p className="text-sm text-muted-foreground">
-          Showing <span className="font-semibold">{sortedJobs.length}</span> job(s) with no applicants yet.
+          Showing <span className="font-semibold">{sortedJobs.length}</span>{" "}
+          job(s) with no applicants yet.
         </p>
       )}
 

@@ -93,6 +93,14 @@ export function OrderTable<TData extends object, TValue>({
     return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
   }, [data]);
 
+  const jobStatusOptions = React.useMemo(() => {
+    const values = data
+      .map((item) => getStringValue((item as Record<string, unknown>).status))
+      .filter(Boolean);
+
+    return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
+  }, [data]);
+
   const statusOptions = React.useMemo(() => {
     const values = [
       "Pending",
@@ -100,11 +108,7 @@ export function OrderTable<TData extends object, TValue>({
       "Rejected",
       ...data.map((item) => {
         const row = item as Record<string, unknown>;
-        return (
-          getStringValue(row.approvalStatus) ||
-          getStringValue(row.status) ||
-          "Pending"
-        );
+        return getStringValue(row.approvalStatus) || "Pending";
       }),
     ];
 
@@ -186,6 +190,7 @@ export function OrderTable<TData extends object, TValue>({
 
   const titleColumn = table.getColumn("title");
   const categoryColumn = table.getColumn("category");
+  const jobStatusColumn = table.getColumn("jobStatus");
   const statusColumn = table.getColumn("status");
   const jobDateColumn = table.getColumn("jobDate");
   const createdAtColumn = table.getColumn("createdAt");
@@ -251,6 +256,22 @@ export function OrderTable<TData extends object, TValue>({
             ))}
           </select>
         )}
+        {jobStatusColumn && jobStatusOptions.length > 0 && (
+          <select
+            value={(jobStatusColumn.getFilterValue() as string) ?? ""}
+            onChange={(event) =>
+              jobStatusColumn.setFilterValue(event.target.value || undefined)
+            }
+            className={filterControlClass}
+          >
+            <option value="">All job statuses</option>
+            {jobStatusOptions.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+        )}
         {statusColumn && (
           <select
             value={(statusColumn.getFilterValue() as string) ?? ""}
@@ -259,7 +280,7 @@ export function OrderTable<TData extends object, TValue>({
             }
             className={filterControlClass}
           >
-            <option value="">All statuses</option>
+            <option value="">All approvals</option>
             {statusOptions.map((status) => (
               <option key={status} value={status}>
                 {status}

@@ -29,6 +29,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
       pathname.includes("/promotions") ||
       pathname.includes("/categories") ||
       pathname.includes("/jobs") ||
+      pathname.includes("/completed-workers") ||
       pathname.includes("/customers") ||
       pathname.includes("/uploads")
     )

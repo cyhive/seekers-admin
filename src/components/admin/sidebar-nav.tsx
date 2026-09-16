@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Briefcase,
   Users,
+  UserCheck,
   Mountain,
   PanelLeft,
   ChevronUp,
@@ -17,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/jobs", icon: Briefcase, label: "Jobs" },
+  { href: "/completed-workers", icon: UserCheck, label: "Completed Workers" },
   { href: "/customers", icon: Users, label: "Customers" },
 ];
 

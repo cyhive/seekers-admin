@@ -761,9 +761,27 @@ export const columns: ColumnDef<Job>[] = [
     },
   },
   {
+    id: "jobStatus",
+    accessorFn: (row) => row.status || "-",
+    header: "Job Status",
+    cell: ({ row }) => {
+      const status = String(row.getValue("jobStatus") || "-");
+      const lowerStatus = status.toLowerCase();
+
+      let colorClass = "text-muted-foreground";
+      if (lowerStatus === "open") colorClass = "text-blue-600";
+      if (lowerStatus === "confirmed" || lowerStatus.includes("progress")) {
+        colorClass = "text-orange-500";
+      }
+      if (lowerStatus === "completed") colorClass = "text-green-600";
+
+      return <span className={`font-bold capitalize ${colorClass}`}>{status}</span>;
+    },
+  },
+  {
     id: "status",
-    accessorFn: (row) => row.approvalStatus || row.status || "Pending",
-    header: "Status",
+    accessorFn: (row) => row.approvalStatus || "Pending",
+    header: "Approval",
     cell: ({ row }) => {
       const status = row.getValue("status") as string;
       const lowerStatus = status.toLowerCase();
