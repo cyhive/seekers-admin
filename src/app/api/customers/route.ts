@@ -51,6 +51,8 @@ export async function GET() {
       phoneNumber: user.phoneNumber || user.phone || user.mobileNumber || "",
       // Map primarySkill to category
       category: user.primarySkill || "",
+      // Fallback through common address fields
+      address: user.homeAddress || user.address || user.fullAddress || "",
       // Added status field for future use (Accept/Reject logic)
       status: user.status || "Pending", 
       createdAt: user.createdAt || null,

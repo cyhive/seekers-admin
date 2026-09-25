@@ -9,6 +9,7 @@ export type UserCustomer = {
   name: string;
   phoneNumber: string;
   category: string;
+  address?: string;
   status?: string;
   createdAt?: string | null;
 };
@@ -393,6 +394,15 @@ export const columns: ColumnDef<UserCustomer>[] = [
   { accessorKey: "name", header: "Name" },
   { accessorKey: "phoneNumber", header: "Phone Number" },
   { accessorKey: "category", header: "Category" },
+  {
+    accessorKey: "address",
+    header: "Address",
+    cell: ({ row }) => (
+      <div className="max-w-xs whitespace-normal break-words">
+        {(row.getValue("address") as string | undefined) || "-"}
+      </div>
+    ),
+  },
   {
     accessorKey: "status",
     header: "Status",
