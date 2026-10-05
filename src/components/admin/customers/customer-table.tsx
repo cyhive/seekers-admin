@@ -161,6 +161,21 @@ export function CustomerTable<TData extends object, TValue>({
           })
         );
       },
+      updateRow: (rowId: string, update: Record<string, unknown>) => {
+        setTableData((currentData) =>
+          currentData.map((item) => {
+            const record = item as Record<string, unknown>;
+            const id = String(record.id ?? record._id ?? "");
+
+            if (id !== rowId) return item;
+
+            return {
+              ...item,
+              ...update,
+            } as TData;
+          })
+        );
+      },
     },
   });
 

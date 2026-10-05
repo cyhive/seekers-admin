@@ -3,6 +3,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 import { useState, useEffect } from "react";
+import { EditCustomerModal, type CustomerRowUpdate } from "./edit-customer-modal";
 
 export type UserCustomer = {
   id: string;
@@ -288,15 +289,22 @@ const ActionCell = ({
   customer,
   onStatusUpdate,
   onDelete,
+  onEdit,
 }: {
   customer: UserCustomer;
   onStatusUpdate?: (status: string) => void;
   onDelete?: () => void;
+  onEdit?: (update: CustomerRowUpdate) => void;
 }) => {
   const [status, setStatus] = useState(customer.status || "Pending");
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  useEffect(() => {
+    setStatus(customer.status || "Pending");
+  }, [customer.status]);
 
   const handleUpdate = async (newStatus: string) => {
     setIsUpdating(true);
@@ -361,6 +369,14 @@ const ActionCell = ({
         </button>
 
         <button
+          onClick={() => setShowEditModal(true)}
+          disabled={isDeleting}
+          className="rounded-md bg-gray-700 px-3 py-1 text-sm font-medium text-white hover:bg-gray-800 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Edit
+        </button>
+
+        <button
           onClick={() => handleUpdate("Approved")}
           disabled={isApproved || isUpdating || isDeleting}
           className="rounded-md bg-green-600 px-3 py-1 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
@@ -385,6 +401,14 @@ const ActionCell = ({
 
       {showModal && (
         <ImageModal customer={customer} onClose={() => setShowModal(false)} />
+      )}
+
+      {showEditModal && (
+        <EditCustomerModal
+          customerId={customer.id}
+          onSaved={onEdit}
+          onClose={() => setShowEditModal(false)}
+        />
       )}
     </>
   );
@@ -446,6 +470,7 @@ export const columns: ColumnDef<UserCustomer>[] = [
         | {
             deleteRow?: (rowId: string) => void;
             updateRowStatus?: (rowId: string, status: string) => void;
+            updateRow?: (rowId: string, update: Partial<UserCustomer>) => void;
           }
         | undefined;
 
@@ -456,6 +481,7 @@ export const columns: ColumnDef<UserCustomer>[] = [
             meta?.updateRowStatus?.(row.original.id, status)
           }
           onDelete={() => meta?.deleteRow?.(row.original.id)}
+          onEdit={(update) => meta?.updateRow?.(row.original.id, update)}
         />
       );
     },
