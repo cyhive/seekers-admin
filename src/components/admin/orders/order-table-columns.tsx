@@ -6,6 +6,7 @@ import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WorkerProfileModal } from "./worker-profile-modal";
+import { AssignWorkerModal, type WorkerAssignment } from "./assign-worker-modal";
 
 // 1. Define the TypeScript shape of your MongoDB Job document
 export type Job = {
@@ -600,11 +601,63 @@ const AssignedWorkerCell = ({ job }: { job: Job }) => {
   );
 };
 
+const JobTitleCell = ({
+  job,
+  onAssigned,
+}: {
+  job: Job;
+  onAssigned?: (assignment: WorkerAssignment) => void;
+}) => {
+  const [open, setOpen] = useState(false);
+  const jobId = job.id || job._id;
+
+  if (!jobId) return <>{displayText(job.title)}</>;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-left font-medium text-blue-600 hover:underline"
+        title="View matching workers and assign"
+      >
+        {displayText(job.title)}
+      </button>
+      {open && (
+        <AssignWorkerModal
+          jobId={jobId}
+          jobTitle={job.title}
+          assignedWorkerPhone={job.assignedWorkerPhone}
+          onAssigned={onAssigned}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
+};
+
 // 3. Define the Table Columns
 export const columns: ColumnDef<Job>[] = [
   {
     accessorKey: "title",
     header: "Job Title",
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as
+        | {
+            updateRow?: (rowId: string, update: Partial<Job>) => void;
+          }
+        | undefined;
+      const jobId = row.original.id || row.original._id;
+
+      return (
+        <JobTitleCell
+          job={row.original}
+          onAssigned={(assignment) => {
+            if (jobId) meta?.updateRow?.(jobId, assignment);
+          }}
+        />
+      );
+    },
   },
   {
     id: "jobDetails",
