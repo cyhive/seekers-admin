@@ -15,7 +15,8 @@ const User = mongoose.models.User || mongoose.model("User", userSchema);
 
 // Fields that are never sent to or changed from the admin edit form
 const READ_ONLY_FIELDS = new Set(["_id", "id", "__v", "createdAt", "updatedAt"]);
-const SECRET_FIELD_PATTERN = /password|token|otp|secret|hash|salt/i;
+// razorpay* holds the payout contact / fund account IDs managed by the payout route
+const SECRET_FIELD_PATTERN = /password|token|otp|secret|hash|salt|razorpay/i;
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
 

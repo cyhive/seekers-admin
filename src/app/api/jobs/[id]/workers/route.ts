@@ -315,6 +315,37 @@ export async function POST(
       });
     }
 
+    // Chat between poster and worker opens only once the poster's wallet has funded the job.
+    // If not funded yet, the app backend creates it when the poster funds the job.
+    if (job.walletFunded === true) {
+      const customerPhone = pickString(job.phoneNumber);
+      const customer = (await User.findOne({ phoneNumber: customerPhone }).lean()) as LooseDocument | null;
+      const chatFields = {
+        participants: [customerPhone, bookingFields.workerPhone],
+        customerPhone,
+        workerPhone: bookingFields.workerPhone,
+        customerName: pickString(customer?.fullName, customer?.name) || undefined,
+        workerName: workerName || "Professional",
+        workerAvatar: pickString(worker.profilePhoto) || undefined,
+        display: true,
+        updatedAt: now,
+      };
+      const chats = db.collection("chats");
+      const existingChat = await chats.findOne({ jobId: new mongoose.Types.ObjectId(id) });
+      if (existingChat) {
+        await chats.updateOne({ _id: existingChat._id }, { $set: chatFields });
+      } else {
+        await chats.insertOne({
+          ...chatFields,
+          jobId: new mongoose.Types.ObjectId(id),
+          lastMessage: "Booking Confirmed! You can now chat.",
+          lastMessageTime: now,
+          unreadCount: 0,
+          createdAt: now,
+        });
+      }
+    }
+
     const jobStatus = String(job.status || "").toLowerCase();
     const nextJobStatus = !jobStatus || jobStatus === "open" ? "Confirmed" : job.status;
     await Job.findByIdAndUpdate(id, {

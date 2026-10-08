@@ -36,6 +36,11 @@ const COMMON_FIELDS: { key: string; kind: FieldKind }[] = [
   { key: "availability", kind: "text" },
   { key: "hourlyRate", kind: "text" },
   { key: "dailyRate", kind: "text" },
+  // Where completed-job payouts are sent (bank account is used when filled in, else UPI)
+  { key: "payoutAccountHolderName", kind: "text" },
+  { key: "payoutAccountNumber", kind: "text" },
+  { key: "payoutIfsc", kind: "text" },
+  { key: "payoutUpiId", kind: "text" },
 ];
 
 const STATUS_OPTIONS = ["Pending", "Approved", "Rejected"];

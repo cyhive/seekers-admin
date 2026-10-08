@@ -42,7 +42,25 @@ export type Job = {
   paymentStatus?: string | null;
   paymentLink?: string | null;
   paymentUrl?: string | null;
+  payoutId?: string | null;
+  payoutStatus?: string | null;
+  payoutAmount?: number | null;
+  payoutUtr?: string | null;
+  payoutDestination?: string | null;
+  payoutFailureReason?: string | null;
 };
+
+type WorkerPayoutUpdate = Partial<
+  Pick<
+    Job,
+    | "payoutId"
+    | "payoutStatus"
+    | "payoutAmount"
+    | "payoutUtr"
+    | "payoutDestination"
+    | "payoutFailureReason"
+  >
+>;
 
 export type JobPaymentUpdate = Partial<
   Pick<
@@ -555,6 +573,140 @@ const ActionCell = ({
   );
 };
 
+const ACTIVE_PAYOUT_STATUSES = ["initiating", "queued", "pending", "processing", "processed"];
+
+const payoutStatusColor = (status: string) => {
+  if (status === "processed") return "text-green-600";
+  if (["failed", "rejected", "reversed", "cancelled"].includes(status)) return "text-red-600";
+  return "text-orange-500";
+};
+
+const WorkerPayoutCell = ({
+  job,
+  payoutAmount,
+  onUpdate,
+}: {
+  job: Job;
+  payoutAmount: number | null;
+  onUpdate?: (update: WorkerPayoutUpdate) => void;
+}) => {
+  const [isPaying, setIsPaying] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const jobId = job.id || job._id;
+  const status = String(job.payoutStatus || "").toLowerCase();
+  const isCompleted = String(job.status || "").toLowerCase() === "completed";
+  const hasWorker = Boolean(job.assignedWorkerPhone);
+  const isActive = ACTIVE_PAYOUT_STATUSES.includes(status);
+
+  if (!jobId) return null;
+
+  const callPayout = async (action: "pay" | "sync") => {
+    const res = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/payout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || data?.success === false) {
+      throw new Error(data?.message || "Payout request failed");
+    }
+    onUpdate?.(data.data);
+  };
+
+  const handlePay = async () => {
+    const customerPaid = String(job.paymentStatus || "").toLowerCase() === "paid";
+    const shouldPay = window.confirm(
+      [
+        `Send ${formatCurrency(payoutAmount)} to ${
+          job.assignedWorkerName || job.assignedWorkerPhone
+        }?`,
+        customerPaid ? "" : "\nWarning: the customer's payment is not marked as paid yet.",
+        "\nThis transfers real money and cannot be undone.",
+      ].join("")
+    );
+    if (!shouldPay) return;
+
+    setIsPaying(true);
+    try {
+      await callPayout("pay");
+    } catch (error) {
+      console.error("Failed to pay worker:", error);
+      alert(error instanceof Error ? error.message : "Failed to pay worker");
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      await callPayout("sync");
+    } catch (error) {
+      console.error("Failed to refresh payout:", error);
+      alert(error instanceof Error ? error.message : "Failed to refresh payout");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const disabledReason = !isCompleted
+    ? "Job is not completed yet"
+    : !hasWorker
+      ? "No worker assigned"
+      : payoutAmount === null || payoutAmount <= 0
+        ? "Save an estimate first"
+        : "";
+
+  return (
+    <div className="min-w-[180px] space-y-1 text-sm">
+      <p className="font-semibold">{formatCurrency(payoutAmount)}</p>
+
+      {status && (
+        <p className={`text-xs font-semibold capitalize ${payoutStatusColor(status)}`}>
+          Payout: {status}
+          {job.payoutAmount != null && ` (${formatCurrency(job.payoutAmount)})`}
+        </p>
+      )}
+      {job.payoutDestination && (
+        <p className="text-xs text-muted-foreground">To: {job.payoutDestination}</p>
+      )}
+      {job.payoutUtr && <p className="text-xs text-muted-foreground">UTR: {job.payoutUtr}</p>}
+      {job.payoutFailureReason && (
+        <p className="max-w-[220px] whitespace-normal break-words text-xs text-red-600">
+          {job.payoutFailureReason}
+        </p>
+      )}
+
+      <div className="flex flex-wrap gap-2 pt-1">
+        {!isActive && (
+          <Button
+            size="sm"
+            className="bg-green-600 hover:bg-green-700 text-white"
+            disabled={Boolean(disabledReason) || isPaying || isSyncing}
+            title={disabledReason || "Send the payout to the worker's bank / UPI"}
+            onClick={handlePay}
+          >
+            {isPaying ? "Paying..." : status ? "Retry Payout" : "Pay Worker"}
+          </Button>
+        )}
+        {job.payoutId && status !== "processed" && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isPaying || isSyncing}
+            onClick={handleSync}
+          >
+            {isSyncing ? "Refreshing..." : "Refresh"}
+          </Button>
+        )}
+      </div>
+      {disabledReason && !isActive && !status && (
+        <p className="text-xs text-muted-foreground">{disabledReason}</p>
+      )}
+    </div>
+  );
+};
+
 const AssignedWorkerCell = ({
   job,
   onAssigned,
@@ -797,7 +949,24 @@ export const columns: ColumnDef<Job>[] = [
       );
     },
     header: "Worker Payout",
-    cell: ({ row }) => formatCurrency(row.getValue("workerPayoutAmount")),
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as
+        | {
+            updateRow?: (rowId: string, update: Partial<Job>) => void;
+          }
+        | undefined;
+      const jobId = row.original.id || row.original._id;
+
+      return (
+        <WorkerPayoutCell
+          job={row.original}
+          payoutAmount={toFiniteNumber(row.getValue("workerPayoutAmount"))}
+          onUpdate={(update) => {
+            if (jobId) meta?.updateRow?.(jobId, update);
+          }}
+        />
+      );
+    },
   },
   {
     id: "paymentStatus",
