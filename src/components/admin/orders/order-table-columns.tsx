@@ -555,8 +555,16 @@ const ActionCell = ({
   );
 };
 
-const AssignedWorkerCell = ({ job }: { job: Job }) => {
+const AssignedWorkerCell = ({
+  job,
+  onAssigned,
+}: {
+  job: Job;
+  onAssigned?: (assignment: WorkerAssignment) => void;
+}) => {
   const [open, setOpen] = useState(false);
+  const [showApplicants, setShowApplicants] = useState(false);
+  const jobId = job.id || job._id;
   const name = displayText(job.assignedWorkerName);
   const phone = displayText(job.assignedWorkerPhone);
   const status = displayText(job.assignedWorkerStatus);
@@ -565,10 +573,28 @@ const AssignedWorkerCell = ({ job }: { job: Job }) => {
   if (name === "-" && phone === "-") {
     if (applicants.length > 0) {
       return (
-        <div className="text-sm space-y-1 max-w-[220px]">
-          <p className="text-muted-foreground">Applied, not hired yet</p>
-          <p className="whitespace-normal break-words">{applicants.join(", ")}</p>
-        </div>
+        <>
+          <button
+            type="button"
+            onClick={() => setShowApplicants(true)}
+            disabled={!jobId}
+            className="text-left text-sm space-y-1 max-w-[220px] rounded-md p-1 -m-1 hover:bg-muted/60"
+            title="View applicants and assign"
+          >
+            <p className="text-muted-foreground">Applied, not hired yet</p>
+            <p className="font-medium text-blue-600 hover:underline">
+              {applicants.length} applied · Assign
+            </p>
+          </button>
+          {showApplicants && jobId && (
+            <AssignWorkerModal
+              jobId={jobId}
+              jobTitle={job.title}
+              onAssigned={onAssigned}
+              onClose={() => setShowApplicants(false)}
+            />
+          )}
+        </>
       );
     }
     return <span className="text-muted-foreground">Not assigned</span>;
@@ -690,7 +716,23 @@ export const columns: ColumnDef<Job>[] = [
         .filter(Boolean)
         .join(" "),
     header: "Assigned Worker",
-    cell: ({ row }) => <AssignedWorkerCell job={row.original} />,
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as
+        | {
+            updateRow?: (rowId: string, update: Partial<Job>) => void;
+          }
+        | undefined;
+      const jobId = row.original.id || row.original._id;
+
+      return (
+        <AssignedWorkerCell
+          job={row.original}
+          onAssigned={(assignment) => {
+            if (jobId) meta?.updateRow?.(jobId, assignment);
+          }}
+        />
+      );
+    },
   },
   {
     id: "jobAddress",

@@ -46,10 +46,12 @@ export function AssignWorkerModal({
   onClose: () => void;
 }) {
   const [category, setCategory] = useState("");
+  const [applicants, setApplicants] = useState<MatchingWorker[]>([]);
   const [workers, setWorkers] = useState<MatchingWorker[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [tab, setTab] = useState<"applied" | "matching">("applied");
   const [assigningPhone, setAssigningPhone] = useState<string | null>(null);
   const [currentPhone, setCurrentPhone] = useState(assignedWorkerPhone || "");
 
@@ -60,6 +62,9 @@ export function AssignWorkerModal({
         const result = await res.json();
         if (!result.success) throw new Error(result.message);
         setCategory(result.data.category || "");
+        setApplicants(result.data.applicants || []);
+        // Open on the matching workers tab when nobody has applied yet
+        if (!result.data.applicants?.length) setTab("matching");
         setWorkers(result.data.workers || []);
       } catch (e: any) {
         setError(e.message || "Failed to load workers");
@@ -102,15 +107,68 @@ export function AssignWorkerModal({
   };
 
   const query = search.trim().toLowerCase();
-  const visibleWorkers = query
-    ? workers.filter((worker) =>
-        [worker.name, worker.phoneNumber, worker.address]
-          .join(" ")
-          .toLowerCase()
-          .includes(query)
-      )
-    : workers;
+  const matchesSearch = (worker: MatchingWorker) =>
+    !query ||
+    [worker.name, worker.phoneNumber, worker.address]
+      .join(" ")
+      .toLowerCase()
+      .includes(query);
+  const visibleApplicants = applicants.filter(matchesSearch);
+  const visibleWorkers = workers.filter(matchesSearch);
   const currentKey = normalizePhone(currentPhone);
+
+  const renderWorker = (worker: MatchingWorker) => {
+    const isAssigned =
+      Boolean(currentKey) && normalizePhone(worker.phoneNumber) === currentKey;
+    // Applicants with no user profile can't be booked
+    const hasProfile = !worker.id.startsWith("phone-");
+
+    return (
+      <div key={worker.id} className="flex items-start justify-between gap-4 p-3 text-sm">
+        <div className="space-y-1 min-w-0">
+          <p className="font-medium">{worker.name || "Unnamed worker"}</p>
+          <p>{worker.phoneNumber}</p>
+          <p>
+            <span className="text-muted-foreground">Profession:</span>{" "}
+            {worker.category || "-"}
+          </p>
+          <p className="text-muted-foreground whitespace-normal break-words">
+            {worker.address || "No address"}
+          </p>
+          <p className={`text-xs font-semibold ${statusColor(worker.status)}`}>
+            {!hasProfile
+              ? "No user profile found"
+              : worker.status === "Approved"
+                ? "Accepted"
+                : worker.status}
+          </p>
+        </div>
+        <Button
+          size="sm"
+          disabled={isAssigned || !hasProfile || assigningPhone !== null}
+          className={
+            isAssigned
+              ? "bg-green-800 opacity-60 text-white"
+              : "bg-green-600 hover:bg-green-700 text-white"
+          }
+          onClick={() => handleAssign(worker)}
+        >
+          {assigningPhone === worker.phoneNumber
+            ? "Assigning..."
+            : isAssigned
+              ? "Assigned"
+              : "Assign"}
+        </Button>
+      </div>
+    );
+  };
+
+  const tabClass = (active: boolean) =>
+    `-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+      active
+        ? "border-blue-600 text-blue-600"
+        : "border-transparent text-gray-500 hover:text-gray-700"
+    }`;
 
   return (
     <div
@@ -151,74 +209,67 @@ export function AssignWorkerModal({
 
         {!loading && !error && (
           <>
-            {!category ? (
-              <p className="text-sm text-muted-foreground">
-                This job has no category, so no matching workers can be found.
-              </p>
-            ) : workers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No workers found with a profession like "{category}".
-              </p>
-            ) : (
-              <>
-                <Input
-                  placeholder="Search by name, phone or address..."
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  className="mb-3 shrink-0"
-                />
-                <div className="flex-1 overflow-y-auto divide-y rounded-md border">
-                  {visibleWorkers.map((worker) => {
-                    const isAssigned =
-                      Boolean(currentKey) &&
-                      normalizePhone(worker.phoneNumber) === currentKey;
+            <div className="mb-3 flex border-b shrink-0">
+              <button
+                type="button"
+                onClick={() => setTab("applied")}
+                className={tabClass(tab === "applied")}
+              >
+                Applied ({applicants.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("matching")}
+                className={tabClass(tab === "matching")}
+              >
+                Matching profession ({workers.length})
+              </button>
+            </div>
 
-                    return (
-                      <div
-                        key={worker.id}
-                        className="flex items-start justify-between gap-4 p-3 text-sm"
-                      >
-                        <div className="space-y-1 min-w-0">
-                          <p className="font-medium">{worker.name || "Unnamed worker"}</p>
-                          <p>{worker.phoneNumber}</p>
-                          <p>
-                            <span className="text-muted-foreground">Profession:</span>{" "}
-                            {worker.category || "-"}
-                          </p>
-                          <p className="text-muted-foreground whitespace-normal break-words">
-                            {worker.address || "No address"}
-                          </p>
-                          <p className={`text-xs font-semibold ${statusColor(worker.status)}`}>
-                            {worker.status === "Approved" ? "Accepted" : worker.status}
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          disabled={isAssigned || assigningPhone !== null}
-                          className={
-                            isAssigned
-                              ? "bg-green-800 opacity-60 text-white"
-                              : "bg-green-600 hover:bg-green-700 text-white"
-                          }
-                          onClick={() => handleAssign(worker)}
-                        >
-                          {assigningPhone === worker.phoneNumber
-                            ? "Assigning..."
-                            : isAssigned
-                              ? "Assigned"
-                              : "Assign"}
-                        </Button>
-                      </div>
-                    );
-                  })}
+            {(applicants.length > 0 || workers.length > 0) && (
+              <Input
+                placeholder="Search by name, phone or address..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="mb-3 shrink-0"
+              />
+            )}
+
+            <div className="flex-1 overflow-y-auto pr-1">
+              {tab === "applied" ? (
+                applicants.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No one has applied for this job yet.
+                  </p>
+                ) : (
+                  <div className="divide-y rounded-md border border-blue-200 bg-blue-50/40">
+                    {visibleApplicants.map(renderWorker)}
+                    {visibleApplicants.length === 0 && (
+                      <p className="p-3 text-sm text-muted-foreground">
+                        No applicants match your search.
+                      </p>
+                    )}
+                  </div>
+                )
+              ) : !category ? (
+                <p className="text-sm text-muted-foreground">
+                  This job has no category, so no matching workers can be found.
+                </p>
+              ) : workers.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No other workers found with a profession like "{category}".
+                </p>
+              ) : (
+                <div className="divide-y rounded-md border">
+                  {visibleWorkers.map(renderWorker)}
                   {visibleWorkers.length === 0 && (
                     <p className="p-3 text-sm text-muted-foreground">
                       No workers match your search.
                     </p>
                   )}
                 </div>
-              </>
-            )}
+              )}
+            </div>
           </>
         )}
       </div>

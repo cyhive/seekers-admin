@@ -78,7 +78,131 @@ const loadJob = async (id: string) => {
   return (await Job.findById(id).lean()) as LooseDocument | null;
 };
 
-// GET: workers whose profession matches the job's category
+const isApproved = (status: string) =>
+  ["approved", "accepted"].includes(status.toLowerCase());
+
+const getUserSkills = (user: LooseDocument) =>
+  [
+    user.primarySkill,
+    user.secondarySkill,
+    ...(Array.isArray(user.skills) ? user.skills : [user.skills]),
+  ].filter((skill): skill is string => typeof skill === "string" && Boolean(skill.trim()));
+
+const toWorker = (user: LooseDocument, phoneNumber: string, matchScore = 0) => ({
+  id: user._id.toString(),
+  name: pickString(user.fullName, user.name, user.displayName),
+  phoneNumber,
+  category: pickString(user.primarySkill, ...getUserSkills(user)),
+  address: pickString(user.homeAddress, user.address, user.fullAddress),
+  status: pickString(user.status) || "Pending",
+  matchScore,
+});
+
+// Phone numbers of everyone who applied for the job (jobapplicants collection)
+const getApplicantPhones = async (id: string) => {
+  const db = mongoose.connection.db;
+  if (!db) return [];
+
+  const docs = await db.collection("jobapplicants").find(getBookingFilter(id)).toArray();
+  const phones = docs.flatMap((doc) => [
+    ...(Array.isArray(doc.userPhoneNumbers) ? doc.userPhoneNumbers : []),
+    doc.userPhoneNumber,
+    doc.userPhone,
+    doc.phoneNumber,
+  ]);
+
+  const seen = new Set<string>();
+  return phones
+    .map((phone) => String(phone ?? "").trim())
+    .filter((phone) => {
+      const key = normalizePhone(phone);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+};
+
+const getApplicants = async (id: string) => {
+  const phones = await getApplicantPhones(id);
+  if (!phones.length) return [];
+
+  const keys = phones.map(normalizePhone);
+  const users = (await User.find({
+    $or: ["phoneNumber", "primaryContact", "phone", "mobileNumber"].flatMap((field) =>
+      keys.map((key) => ({ [field]: { $regex: `${key}$` } }))
+    ),
+  })
+    .sort({ createdAt: -1, _id: -1 })
+    .lean()) as LooseDocument[];
+
+  const userByPhone = new Map<string, LooseDocument>();
+  for (const user of users) {
+    const key = normalizePhone(getUserPhone(user));
+    if (key && !userByPhone.has(key)) userByPhone.set(key, user);
+  }
+
+  // Applicants without a user profile are still listed by phone number
+  return phones.map((phone) => {
+    const user = userByPhone.get(normalizePhone(phone));
+    return user
+      ? toWorker(user, getUserPhone(user))
+      : {
+          id: `phone-${normalizePhone(phone)}`,
+          name: "",
+          phoneNumber: phone,
+          category: "",
+          address: "",
+          status: "Unknown",
+          matchScore: 0,
+        };
+  });
+};
+
+// Workers whose profession loosely matches the job's category
+const getMatchingWorkers = async (job: LooseDocument, category: string) => {
+  // Loose match: any keyword of the category ("cleaning") matches any profession
+  // containing a word with the same stem ("House Cleaning", "Cleaner").
+  const stems = getKeywordStems(category);
+  if (!stems.length) return [];
+
+  const keywordRegex = new RegExp(`\\b(${stems.map(escapeRegex).join("|")})`, "i");
+  const users = (await User.find({
+    $or: [
+      { primarySkill: keywordRegex },
+      { secondarySkill: keywordRegex },
+      { skills: keywordRegex },
+    ],
+  })
+    .sort({ createdAt: -1, _id: -1 })
+    .lean()) as LooseDocument[];
+
+  const posterKey = normalizePhone(job.phoneNumber || job.phone || job.mobileNumber);
+  const seenPhones = new Set<string>();
+  const workers = [];
+
+  // One entry per phone number (newest document wins), skipping the job poster
+  for (const user of users) {
+    const phoneNumber = getUserPhone(user);
+    const phoneKey = normalizePhone(phoneNumber);
+    if (!phoneKey || phoneKey === posterKey || seenPhones.has(phoneKey)) continue;
+    seenPhones.add(phoneKey);
+
+    const matchScore = Math.max(
+      0,
+      ...getUserSkills(user).map((skill) => getMatchScore(category, stems, skill))
+    );
+    workers.push(toWorker(user, phoneNumber, matchScore));
+  }
+
+  // Closest profession first, then approved workers first
+  return workers.sort(
+    (a, b) =>
+      b.matchScore - a.matchScore ||
+      Number(isApproved(b.status)) - Number(isApproved(a.status))
+  );
+};
+
+// GET: workers who applied for the job, plus workers whose profession matches it
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -95,72 +219,18 @@ export async function GET(
     }
 
     const category = getJobCategory(job);
-    if (!category) {
-      return NextResponse.json({
-        success: true,
-        data: { category: "", workers: [] },
-      });
-    }
+    const [applicants, matchingWorkers] = await Promise.all([
+      getApplicants(id),
+      category ? getMatchingWorkers(job, category) : Promise.resolve([]),
+    ]);
 
-    // Loose match: any keyword of the category ("cleaning") matches any profession
-    // containing a word with the same stem ("House Cleaning", "Cleaner").
-    const stems = getKeywordStems(category);
-    if (!stems.length) {
-      return NextResponse.json({
-        success: true,
-        data: { category, workers: [] },
-      });
-    }
-
-    const keywordRegex = new RegExp(`\\b(${stems.map(escapeRegex).join("|")})`, "i");
-    const users = (await User.find({
-      $or: [
-        { primarySkill: keywordRegex },
-        { secondarySkill: keywordRegex },
-        { skills: keywordRegex },
-      ],
-    })
-      .sort({ createdAt: -1, _id: -1 })
-      .lean()) as LooseDocument[];
-
-    const posterKey = normalizePhone(job.phoneNumber || job.phone || job.mobileNumber);
-    const seenPhones = new Set<string>();
-    const workers = [];
-
-    // One entry per phone number (newest document wins), skipping the job poster
-    for (const user of users) {
-      const phoneNumber = getUserPhone(user);
-      const phoneKey = normalizePhone(phoneNumber);
-      if (!phoneKey || phoneKey === posterKey || seenPhones.has(phoneKey)) continue;
-      seenPhones.add(phoneKey);
-
-      const skills = [
-        user.primarySkill,
-        user.secondarySkill,
-        ...(Array.isArray(user.skills) ? user.skills : [user.skills]),
-      ].filter((skill): skill is string => typeof skill === "string" && Boolean(skill.trim()));
-
-      workers.push({
-        id: user._id.toString(),
-        name: pickString(user.fullName, user.name, user.displayName),
-        phoneNumber,
-        category: pickString(user.primarySkill, ...skills),
-        address: pickString(user.homeAddress, user.address, user.fullAddress),
-        status: pickString(user.status) || "Pending",
-        matchScore: Math.max(0, ...skills.map((skill) => getMatchScore(category, stems, skill))),
-      });
-    }
-
-    const isApproved = (status: string) =>
-      ["approved", "accepted"].includes(status.toLowerCase());
-    // Closest profession first, then approved workers first
-    workers.sort(
-      (a, b) =>
-        b.matchScore - a.matchScore ||
-        Number(isApproved(b.status)) - Number(isApproved(a.status))
+    // Applicants are shown in their own section, so leave them out of the matches
+    const applicantKeys = new Set(applicants.map((worker) => normalizePhone(worker.phoneNumber)));
+    const workers = matchingWorkers.filter(
+      (worker) => !applicantKeys.has(normalizePhone(worker.phoneNumber))
     );
 
-    return NextResponse.json({ success: true, data: { category, workers } });
+    return NextResponse.json({ success: true, data: { category, applicants, workers } });
   } catch (error: any) {
     console.error("API Error (GET /api/jobs/[id]/workers):", error);
     return NextResponse.json(
